@@ -94,9 +94,11 @@ WSGI_APPLICATION = 'trackd.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
+import os
+import dj_database_url
 
 DATABASES = {
-    'default': {
+    'default': dj_database_url.config(default='postgres://postgres:@localhost:5432/trackd-db') if os.environ.get('PRODUCTION') == 'true' else {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'trackd-db',
         'USER': 'postgres',
