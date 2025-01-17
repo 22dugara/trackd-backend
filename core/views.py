@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from .models import Profile, Artist, Album, Song, Review, Favorite, RecentSearch
 from .serializers import ProfileSerializer, ArtistSerializer, AlbumSerializer, SongSerializer, ReviewSerializer, FavoriteSerializer, RecentSearchSerializer
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated, AllowAny
 from rest_framework import generics
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
@@ -15,6 +15,7 @@ from rest_framework.decorators import action
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from rest_framework.parsers import MultiPartParser, FormParser
 
 class HelloWorldView(APIView):
     def get(self, request):
@@ -145,3 +146,64 @@ class SearchView(APIView):
         }
         
         return Response(results)
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]  # Allow anyone to register
+    parser_classes = (MultiPartParser, FormParser)  # Add support for file uploads
+
+    def post(self, request):
+        User = get_user_model()
+        
+        # Extract data from request
+        username = request.data.get('username')
+        password = request.data.get('password')
+        email = request.data.get('email')
+        display_picture = request.data.get('display_picture')  # Optional profile picture
+        bio = request.data.get('bio')  # Optional bio
+        
+        # Validate required fields
+        if not username or not password:
+            return Response(
+                {'error': 'Username and password are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if username already exists
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {'error': 'Username already exists'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Create user
+            user = User.objects.create_user(
+                username=username,
+                password=password,
+                email=email
+            )
+            
+            # Create associated profile with optional fields
+            profile = Profile.objects.create(
+                user=user,
+                bio=bio
+            )
+            
+            # Handle profile picture if provided
+            if display_picture:
+                profile.display_picture = display_picture
+                profile.save()
+
+            return Response({
+                'message': 'User created successfully',
+                'user_id': user.id,
+                'username': user.username,
+                'bio': profile.bio,
+                'display_picture': request.build_absolute_uri(profile.display_picture.url) if profile.display_picture else None
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )

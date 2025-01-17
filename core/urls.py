@@ -1,5 +1,5 @@
 from rest_framework.routers import DefaultRouter
-from .views import ProfileViewSet, ArtistViewSet, AlbumViewSet, SongViewSet, ReviewViewSet, AlbumReviewsView, FavoriteViewSet, RecommendationView, SearchView
+from .views import ProfileViewSet, ArtistViewSet, AlbumViewSet, SongViewSet, ReviewViewSet, AlbumReviewsView, FavoriteViewSet, RecommendationView, SearchView, RegisterView
 from django.urls import path
 
 router = DefaultRouter()
@@ -14,5 +14,6 @@ urlpatterns = router.urls + [
     path('albums/<int:pk>/reviews/', AlbumReviewsView.as_view(), name='album-reviews'),
     path('recommendations/', RecommendationView.as_view(), name='recommendations'),
     path('search/', SearchView.as_view(), name='search'),
+    path('register/', RegisterView.as_view(), name='register'),
 ]
 
