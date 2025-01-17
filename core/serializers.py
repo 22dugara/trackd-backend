@@ -1,10 +1,26 @@
 from rest_framework import serializers
-from .models import Profile, Artist, Album, Song, Review, Favorite
+from .models import Profile, Artist, Album, Song, Review, Favorite, RecentSearch
+from rest_framework.serializers import ImageField
+from django.contrib.contenttypes.models import ContentType
+
+class AbsoluteImageField(ImageField):
+    def to_representation(self, value):
+        if not value:
+            return None
+        request = self.context.get('request', None)
+        if request:
+            return request.build_absolute_uri(value.url)
+        return super().to_representation(value)
 
 class ProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="user.username", read_only=True)
+    first_name = serializers.CharField(source="user.first_name", read_only=True)
+    last_name = serializers.CharField(source="user.last_name", read_only=True)
+
     class Meta:
         model = Profile
-        fields = '__all__'
+        fields = ['id', 'username', 'first_name', 'last_name', 'display_picture', 'bio', 'favorite_genres', 'reviews', 'friends']
+
 
 class ArtistSerializer(serializers.ModelSerializer):
     class Meta:
@@ -60,5 +76,27 @@ class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Favorite
         fields = '__all__'
+
+class RecentSearchSerializer(serializers.ModelSerializer):
+    title = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RecentSearch
+        fields = ['id', 'title', 'image', 'description', 'type', 'searched_at']
+
+    def get_title(self, obj):
+        return obj.content_object.search_title
+
+    def get_image(self, obj):
+        return obj.content_object.search_image.url if obj.content_object.search_image else None
+
+    def get_description(self, obj):
+        return obj.content_object.search_description
+
+    def get_type(self, obj):
+        return obj.content_type.model.capitalize()
 
 
