@@ -1,1 +1,1 @@
-web: gunicorn trackd-backend.wsgi
+web: gunicorn trackd.wsgi
