@@ -43,7 +43,7 @@ class ProfileViewSet(ModelViewSet):
         """
         profile = request.user.profile
         recent_searches = profile.recent_searches.all()
-        serializer = RecentSearchSerializer(recent_searches, many=True)
+        serializer = RecentSearchSerializer(recent_searches, many=True, context={'request': request})
         return Response(serializer.data)
 
 class ArtistViewSet(ModelViewSet):

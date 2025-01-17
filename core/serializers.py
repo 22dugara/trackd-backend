@@ -91,7 +91,13 @@ class RecentSearchSerializer(serializers.ModelSerializer):
         return obj.content_object.search_title
 
     def get_image(self, obj):
-        return obj.content_object.search_image.url if obj.content_object.search_image else None
+        if not obj.content_object.search_image:
+            return None
+            
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.content_object.search_image.url)
+        return obj.content_object.search_image.url
 
     def get_description(self, obj):
         return obj.content_object.search_description
