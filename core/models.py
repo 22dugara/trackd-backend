@@ -87,7 +87,8 @@ class Artist(models.Model, SearchableMixin):
     genre = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     average_rating = models.DecimalField(max_digits=3, decimal_places=1, default=0.0)
-    image = models.ImageField(upload_to="artist_images/", blank=True, null=True)
+    image = models.URLField(max_length=500, blank=True, null=True)
+    spotify_uri = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -103,8 +104,9 @@ class Album(models.Model, SearchableMixin):
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE, related_name="albums")
     genre = models.CharField(max_length=255)
     release_date = models.DateField()
-    cover_art = models.ImageField(upload_to="album_covers/", blank=True, null=True)
+    cover_art = models.URLField(max_length=500, blank=True, null=True)
     average_rating = models.DecimalField(max_digits=3, decimal_places=1, default=0.0)
+    spotify_uri = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return self.title
@@ -126,7 +128,8 @@ class Song(models.Model, SearchableMixin):
     album = models.ForeignKey(Album, on_delete=models.CASCADE, related_name="songs", blank=True, null=True)
     duration = models.DurationField()
     average_rating = models.DecimalField(max_digits=3, decimal_places=1, default=0.0)
-    image = models.ImageField(upload_to="song_images/", blank=True, null=True)
+    image = models.URLField(max_length=500, blank=True, null=True)
+    spotify_uri = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return self.title

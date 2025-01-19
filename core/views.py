@@ -10,12 +10,13 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticate
 from rest_framework import generics
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
-from django.db.models import Avg
+from django.db.models import Avg, Q
 from rest_framework.decorators import action
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework.parsers import MultiPartParser, FormParser
+from .spotify import *
 
 class HelloWorldView(APIView):
     def get(self, request):
@@ -110,7 +111,7 @@ class FavoriteViewSet(ModelViewSet):
 
 class RecommendationView(APIView):
     permission_classes = [IsAuthenticated]
-
+    #Improve recommendation algorithm
     def get(self, request):
         favorite_genres = request.user.profile.favorite_genres
         recommendations = Album.objects.filter(genre__in=favorite_genres).annotate(avg_rating=Avg('review__rating')).order_by('-avg_rating')[:10]
@@ -123,29 +124,101 @@ class SearchView(APIView):
     """
     def get(self, request):
         search_query = request.query_params.get('q', '')
-        content_type = request.query_params.get('filter', None)
         
-        valid_content_types = ['Album', 'Song', 'Artist', 'Profile']
-        if content_type and content_type not in valid_content_types:
-            return Response(
-                {'error': f'Invalid filter type. Must be one of: {", ".join(valid_content_types)}'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # For testing: Add superuser 'aryan' to recent searches
-        if request.user.is_authenticated:
-            User = get_user_model()
-            test_user = get_object_or_404(User, username='aryan')
-            test_profile = test_user.profile
-            request.user.profile.add_recent_search(test_profile)
-
+        # Initialize results
         results = {
             'query': search_query,
-            'filter': content_type,
-            'results': []
+            'profiles': [], # Top 10 profiles
+            'albums': [],   # Albums from Spotify
+            'artists': [],  # Artists from Spotify
+            'songs': []     # Songs from Spotify
         }
+
+        # Search profiles
+        profile_results = Profile.objects.filter(
+            Q(user__username__icontains=search_query)             
+        ).select_related('user')[:10]  # Limit to top 10 results
+
+        # Add profile results to response
+        profile_serializer = ProfileSerializer(
+            profile_results, 
+            many=True,
+            context={'request': request}  # Include request for full URLs
+        )
+        results['profiles'] = profile_serializer.data
+        
+        # Get Spotify results for other content types
+        token_response = get_spotify_token()
+        if not token_response:
+            return Response(
+                {'error': 'Failed to authenticate with Spotify API'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        access_token = token_response
+        spotify_results = search_spotify(search_query, None, access_token)
+        
+        # Add Spotify results to response
+        results.update(spotify_results)  # This adds albums, songs, and artists from Spotify
         
         return Response(results)
+
+class AddSearchView(APIView):
+    """
+    Add a searched item to user's recent searches
+    """
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            # Get query parameters
+            content_type = request.query_params.get('content_type')
+            content_id = request.query_params.get('content_id')
+            print("Adding Search")
+            # Validate parameters
+            if not content_type or not content_id:
+                return Response({"error": "Missing parameters"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get or create the searchable object
+            searchable = None
+            
+            if content_type in ['Album', 'Song', 'Artist']:
+                # Check if it exists in our database
+                model = {
+                    'Album': Album,
+                    'Song': Song,
+                    'Artist': Artist
+                }[content_type]
+                
+                searchable = model.objects.filter(spotify_uri=content_id).first()
+                print(searchable)
+                
+                # If not in database, create it from Spotify
+                if not searchable:
+                    print("Not in database")
+                    spotify_type = content_type.lower()
+                    if spotify_type == 'song':
+                        spotify_type = 'track'
+                        
+                    token_response = get_spotify_token()
+                    if not token_response:
+                        return Response({"error": "Spotify API error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                        
+                    searchable = create_resource(spotify_type, content_id, token_response)
+                    
+            elif content_type == 'Profile':
+                searchable = Profile.objects.filter(id=content_id).first()
+                
+            # Add to recent searches if we found or created a searchable object
+            if searchable:
+                request.user.profile.add_recent_search(searchable)
+                return Response({"message": "Search added successfully"}, status=status.HTTP_200_OK)
+            
+            return Response({"error": "Item not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]  # Allow anyone to register
