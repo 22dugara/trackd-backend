@@ -82,24 +82,33 @@ class RecentSearchSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
     description = serializers.SerializerMethodField()
     type = serializers.SerializerMethodField()
+    object_uri = serializers.SerializerMethodField()
+    object_id = serializers.SerializerMethodField()
+
 
     class Meta:
         model = RecentSearch
-        fields = ['id', 'title', 'image', 'description', 'type', 'searched_at']
+        fields = ['object_id', 'object_uri', 'title', 'image', 'description', 'type', 'searched_at']  # Updated to use content_id
 
     def get_title(self, obj):
         return obj.content_object.search_title
 
     def get_image(self, obj):
-        if not obj.content_object.search_image:
-            return None
+        if isinstance(obj.content_object.search_image, str):
+            return obj.content_object.search_image
             
-        return obj.content_object.search_image
+        return None
 
     def get_description(self, obj):
         return obj.content_object.search_description
 
     def get_type(self, obj):
         return obj.content_type.model.capitalize()
+
+    def get_object_uri(self, obj):
+        return obj.content_object.spotify_uri if isinstance(obj.content_object, (Song, Album, Artist)) else obj.content_object.id
+
+    def get_object_id(self, obj):
+        return obj.content_object.id
 
 

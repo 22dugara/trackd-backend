@@ -130,6 +130,7 @@ def create_resource(content_type, spotify_uri, token):
                     'artist': artist,
                     'genre': artist.genre,  # Use artist's genre as default
                     'release_date': spotify_data['release_date'],
+                    'tracks': spotify_data['total_tracks'],
                     'cover_art': spotify_data['images'][0]['url'] if spotify_data.get('images') else None
                 }
             )

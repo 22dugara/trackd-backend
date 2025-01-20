@@ -46,7 +46,7 @@ class RecentSearch(models.Model):
     """
     profile = models.ForeignKey('Profile', on_delete=models.CASCADE, related_name='recent_searches')
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
+    object_id = models.CharField(max_length=255)
     content_object = GenericForeignKey('content_type', 'object_id')
     searched_at = models.DateTimeField(auto_now=True)
 
@@ -106,6 +106,7 @@ class Album(models.Model, SearchableMixin):
     release_date = models.DateField()
     cover_art = models.URLField(max_length=500, blank=True, null=True)
     average_rating = models.DecimalField(max_digits=3, decimal_places=1, default=0.0)
+    tracks = models.PositiveIntegerField(default=0)
     spotify_uri = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
@@ -143,7 +144,7 @@ class Song(models.Model, SearchableMixin):
 class Review(models.Model):
     CONTENT_CHOICES = [
         ('album', 'Album'),
-        ('song', 'Song'),
+        ('track', 'Track'),
         ('artist', 'Artist'),
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reviews")

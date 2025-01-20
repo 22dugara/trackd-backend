@@ -46,6 +46,7 @@ class ProfileViewSet(ModelViewSet):
         profile = request.user.profile
         recent_searches = profile.recent_searches.all()
         serializer = RecentSearchSerializer(recent_searches, many=True, context={'request': request})
+        print(serializer.data)
         return Response(serializer.data)
 
 class ArtistViewSet(ModelViewSet):
@@ -175,7 +176,7 @@ class AddSearchView(APIView):
             # Get query parameters
             content_type = request.query_params.get('content_type')
             content_id = request.query_params.get('content_id')
-            print("Adding Search")
+            print("Adding Search", content_type, content_id)
             # Validate parameters
             if not content_type or not content_id:
                 return Response({"error": "Missing parameters"}, status=status.HTTP_400_BAD_REQUEST)
@@ -213,7 +214,7 @@ class AddSearchView(APIView):
             # Add to recent searches if we found or created a searchable object
             if searchable:
                 request.user.profile.add_recent_search(searchable)
-                return Response({"message": "Search added successfully"}, status=status.HTTP_200_OK)
+                return Response({"message": "Search added successfully", "id": searchable.id}, status=status.HTTP_200_OK)
             
             return Response({"error": "Item not found"}, status=status.HTTP_404_NOT_FOUND)
             
@@ -280,3 +281,7 @@ class RegisterView(APIView):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+
+    
